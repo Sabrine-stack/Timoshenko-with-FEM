@@ -1,0 +1,94 @@
+clear all
+clc
+L=1;
+k=0.1;
+h= 0.5;
+Nx=L/h-1; 
+Nt=50000;
+b=0.5;
+T=Nt*k;
+x=(h:h:L-h)';
+t=0:k:T;
+% //matrices
+w = (h/6)*ones(Nx,1);
+M= spdiags([w 4*w w], -1:1, Nx, Nx);
+X=ones(Nx,1);
+K=spdiags([(-1/h)*X (2./h)*X (-1/h)*X], -1:1, Nx, Nx);
+S=spdiags([(-1/2)*X  0*X (1/2)*X], -1:1, Nx, Nx);
+% //conditions initiales% 
+phi0=     x.*(L-x);     % x.*(L-x);[exp(-(x-50).^2)]; %
+psi0=  x.*(L-x);    %x.*(L-x); [exp(-(x-50).^2)];
+phi1= 0*phi0;      %[exp(-(x-50).^2)];  %x.*(L-x); %[(2*pi)/T]* sin((2*pi*x)/L)%             %x.*(L-x);
+psi1= 0*psi0;     %[exp(-(x-50).^2)];  %x.*(L-x);  %x.*(L-x);
+% les conditions initiales 
+phi=zeros(Nx,Nt);
+psi=zeros(Nx,Nt);
+phi(:,1)=phi0;
+phi(:,2)=phi0-2*k*phi1;                 % M*phi0-(k^2/2).*K*phi0+k*M*phi1;    %
+psi(:,1)=psi0;
+psi(:,2)=psi0-2*k*psi1; %  M*phi0-(k^2/2).*K*phi0+k*M*phi1;    
+%Initialisation de l'énegie
+en=zeros(1,Nt);
+en1=zeros(1,Nt);
+en2=zeros(1,Nt);
+e=zeros(1,Nt);
+%Calcul de E^0
+ en(1)=energyonde(1,k,M,K,phi(:,1),phi(:,2));
+ en1(1)=energyonde(1,k,M,K,psi(:,1),psi(:,2));
+ en2(1)=ene(1,k,M,S,phi(:,1),phi(:,2),psi(:,1),psi(:,2));
+ e0=[en(1)+en1(1)+en2(1)];
+ 
+%initialisation de phi et psi pour n=3
+ phi(:,3)= 2*phi(:,2)-phi(:,1)+k^2*[M\(-K*phi(:,2)+S*psi(:,2))];
+ psi(:,3)= 2*psi(:,2)-psi(:,1)+k^2*[M\[(-K-M)*psi(:,2)-(S*phi(:,2))]];
+ %calcul de E^1
+ en(2)=energyonde(2,k,M,K,phi(:,2),phi(:,3));
+ en1(2)=energyonde(2,k,M,K,psi(:,2),psi(:,3));
+ en2(2)=ene(1,k,M,S,phi(:,2),phi(:,3),psi(:,2),psi(:,3));
+ e2=[en(2)+en1(2)+en2(2)];
+ %initialisation
+diff=zeros(1,Nt);
+Zn=zeros(Nx,1);
+Zn1=zeros(Nx,1);
+D=zeros(Nx,1);
+ e(1)=0.75;
+ e(2)=e2;
+    %calcul de Terme d'amortissement
+diff=zeros(1,Nt);
+Zn=zeros(Nx,1);
+Zn1=zeros(Nx,1);
+D=zeros(Nx,1);
+for n=3:Nt 
+    %calcul de Terme d'amortissement
+Zn=psi(:,n);
+Zn1=psi(:,n-2);
+for i=1:Nx
+   D(i)=exp(-1/((Zn(i)-Zn1(i))/(2*k))^2);   
+end
+%calcul de la solution avec un terme d'amortissemnt
+phi(:,n+1)= 2*phi(:,n)-phi(:,n-1)+k^2*[M\(-K*phi(:,n)+S*psi(:,n))];
+psi(:,n+1)= 2*psi(:,n)-psi(:,n-1)+k^2*[M\[(-K-M)*psi(:,n)-(S*phi(:,n))-b*M*D]];
+% calcul de l'énergie E^n
+ en(n)=energyonde(n,k,M,K,phi(:,n),phi(:,(n+1)));
+ en1(n)=energyonde(n,k,M,K,psi(:,n),psi(:,(n+1)));
+ en2(n)=ene(n,k,M,S,phi(:,n),phi(:,(n+1)),psi(:,n),psi(:,(n+1)));
+ e(n)=[en(n)+en1(n)+en2(n)];
+diff(n)=e(n)-e(n-1);
+end
+%plot(t(1:Nt),diff)
+%plot(t(1:Nt),e)
+%el=[e0 e];
+Phi=zeros(Nx+2,Nt);
+Psi=zeros(Nx+2,Nt);
+for n=1:Nt
+    Phi(:,n)=[0; phi(:,n); 0];
+end
+for n=1:Nt
+    Psi(:,n)=[0; psi(:,n);0];
+end
+
+x=linspace(0,1,Nx+2);
+%plot(t(1:Nt),e)
+plot(t(1:Nt),e/e(1))
+ %loglog (t(1:Nt), e);
+%set(gca,'ylim',[0 0.75],'ytick',0:0.1:0.75)
